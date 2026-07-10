@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pub Golf — Luglio 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12160f; --bg2:#1a1f14; --card:#212818; --card2:#2a3220; --line:#3a4630;
+    --ink:#f2f0e0; --muted:#9aa284;
+    --green:#7bc043;    /* fairway green — primario */
+    --amber:#f2c14e;    /* flag / birra */
+    --spritz:#ec5a2a;   /* penalità / aperol */
+    --shot:#ff5c8a;     /* shot */
+    --win:#8be04a;
+    --accent:var(--green);
+    --display:'Anton','Arial Narrow',sans-serif;
+    --body:'Archivo',system-ui,sans-serif;
+    --mono:'Space Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{
+    background:
+      radial-gradient(1100px 600px at 82% -12%, rgba(123,192,67,.12), transparent 60%),
+      radial-gradient(900px 520px at -12% 15%, rgba(242,193,78,.08), transparent 55%),
+      var(--bg);
+    color:var(--ink); font-family:var(--body); line-height:1.5;
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 20px 80px}
+
+  header{margin-bottom:22px}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  h1{font-family:var(--display);font-weight:400;margin:0;font-size:clamp(52px,13vw,124px);line-height:.85;
+    letter-spacing:.01em;text-transform:uppercase;color:var(--ink);text-shadow:0 0 44px rgba(123,192,67,.22)}
+  h1 span{color:var(--green)}
+  .edition{font-family:var(--mono);color:var(--amber);letter-spacing:.14em;text-transform:uppercase;font-size:13px;margin:12px 0 0}
+  .sub{margin:10px 0 0;max-width:60ch;color:var(--muted);font-size:15px}
+  .sub b{color:var(--ink);font-weight:600}
+
+  .venues{display:flex;gap:10px;overflow-x:auto;padding:20px 0 6px;margin:12px -4px 0;scrollbar-width:none}
+  .venues::-webkit-scrollbar{display:none}
+  .venue{flex:0 0 auto;min-width:140px;text-align:left;cursor:pointer;background:var(--card);
+    border:1px solid var(--line);border-radius:14px;padding:13px 15px;color:var(--ink);font-family:var(--body);
+    transition:transform .12s,border-color .12s,background .12s;position:relative}
+  .venue:hover{transform:translateY(-2px)}
+  .hole{position:absolute;top:10px;right:12px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .venue .vn{font-family:var(--display);font-size:21px;text-transform:uppercase;letter-spacing:.02em;line-height:1;padding-right:34px}
+  .venue .vt{font-size:12px;color:var(--muted);margin-top:5px}
+  .venue.active{background:var(--card2);border-color:var(--acc,var(--green))}
+  .venue.active .vn{color:var(--acc,var(--green))}
+  .venue:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:22px}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--bg2);border:1px solid var(--line);border-radius:18px;padding:22px}
+  .panel.full{margin-top:20px}
+  .panel h2{font-family:var(--display);font-weight:400;text-transform:uppercase;letter-spacing:.03em;font-size:26px;margin:0 0 2px}
+  .panel .h2sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+
+  label{display:block;font-size:13px;color:var(--muted);margin:0 0 7px;font-weight:500}
+  .field{margin-bottom:16px}
+  .lbl-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+  .lbl-row label{margin:0}
+  input[type=text],select{width:100%;background:var(--card);border:1px solid var(--line);border-radius:11px;
+    color:var(--ink);font-family:var(--body);font-size:16px;padding:12px 13px}
+  input[type=text]::placeholder{color:#63704f}
+  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+  select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+    background-position:calc(100% - 20px) 20px,calc(100% - 14px) 20px;background-size:6px 6px,6px 6px;background-repeat:no-repeat}
+
+  .stepper{display:flex;background:var(--card);border:1px solid var(--line);border-radius:11px;overflow:hidden}
+  .stepper button{flex:0 0 50px;background:transparent;border:none;color:var(--ink);font-size:23px;cursor:pointer;font-family:var(--mono);transition:background .1s}
+  .stepper button:hover{background:var(--card2)}
+  .stepper button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .stepper input{flex:1;text-align:center;background:transparent;border:none;color:var(--ink);font-family:var(--mono);font-size:21px;font-weight:700;width:100%;padding:11px 0}
+  .stepper input:focus{outline:none}
+  .stepper.mini{border-radius:9px}
+  .stepper.mini button{flex:0 0 40px;font-size:19px}
+  .stepper.mini input{font-size:17px;padding:8px 0}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:420px){.two{grid-template-columns:1fr}}
+
+  .hint{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.55}
+  .hint b{color:var(--green);font-weight:700}
+  .hint .ref{color:var(--amber)}
+  .addx{font-family:var(--mono);font-size:12px;color:var(--green);background:var(--card);border:1px solid var(--line);
+    border-radius:999px;padding:5px 11px;cursor:pointer}
+  .addx:hover{background:var(--card2)}
+  .addx:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+
+  .xrow{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;margin-bottom:9px}
+  .xlbl{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+  .badge{font-family:var(--mono);font-size:11px;padding:4px 8px;border-radius:7px;white-space:nowrap;text-align:center}
+  .badge.ok{color:#0e1409;background:var(--green)}
+  .badge.no{color:var(--spritz);border:1px solid var(--spritz)}
+  .xdel{background:none;border:none;color:#63704f;cursor:pointer;font-size:15px;padding:4px}
+  .xdel:hover{color:var(--spritz)}
+  .noextra{font-size:12px;color:#63704f;font-style:italic;margin:2px 0 0}
+
+  .score{margin:20px 0 4px;background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:16px 18px;
+    display:flex;align-items:center;justify-content:space-between;gap:14px}
+  .score .math{font-family:var(--mono);font-size:13px;color:var(--muted);line-height:1.7;min-width:0}
+  .score .math .op{color:var(--green)}
+  .score .big{font-family:var(--mono);font-weight:700;font-size:44px;line-height:1;color:var(--accent);text-shadow:0 0 26px rgba(123,192,67,.28);white-space:nowrap}
+  .score .big small{display:block;font-family:var(--body);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.18em;text-align:right;margin-top:6px;text-shadow:none}
+
+  .go{width:100%;margin-top:16px;border:none;cursor:pointer;background:var(--accent);color:#0e1409;
+    font-family:var(--display);font-size:22px;text-transform:uppercase;letter-spacing:.04em;padding:15px;border-radius:12px;transition:filter .12s,transform .06s}
+  .go:hover{filter:brightness(1.08)} .go:active{transform:scale(.99)}
+  .go:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+  .filters{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 16px}
+  .chip{font-size:12px;font-family:var(--mono);color:var(--muted);cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 11px}
+  .chip.active{color:#0e1409;background:var(--ink);border-color:var(--ink);font-weight:700}
+  .chip:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+
+  .rows{display:flex;flex-direction:column;gap:9px}
+  .row{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:12px;background:var(--card);
+    border:1px solid var(--line);border-radius:12px;padding:12px 14px;position:relative;animation:pop .25s ease both}
+  @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .rank{font-family:var(--mono);font-size:18px;color:var(--muted);text-align:center}
+  .who{min-width:0}
+  .who .nm{font-weight:700;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .who .meta{font-size:12px;color:var(--muted);margin-top:4px;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
+  .vchip{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);border:1px solid currentColor;border-radius:5px;padding:1px 6px;opacity:.9}
+  .stat{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .stat.pen{color:var(--spritz)}
+  .eff{font-family:var(--mono);font-weight:700;font-size:27px;text-align:right;line-height:1;white-space:nowrap}
+  .eff small{display:block;font-family:var(--body);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+  .row.top{border-color:var(--win);box-shadow:0 0 0 1px var(--win),0 0 30px rgba(139,224,74,.15)}
+  .row.top .rank,.row.top .eff{color:var(--win)}
+  .crown{position:absolute;top:-9px;left:-7px;font-size:18px;transform:rotate(-18deg)}
+  .del{position:absolute;top:8px;right:9px;background:none;border:none;color:#63704f;cursor:pointer;font-size:15px;line-height:1;padding:3px;opacity:0;transition:opacity .12s,color .12s}
+  .row:hover .del{opacity:1}
+  .del:hover{color:var(--spritz)}
+  .del:focus-visible{opacity:1;outline:2px solid var(--spritz);outline-offset:1px}
+
+  .empty{color:var(--muted);font-size:14px;text-align:center;padding:34px 10px;border:1px dashed var(--line);border-radius:12px}
+  .lbfoot{margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .lbfoot .note{font-size:11px;color:#63704f;max-width:64%}
+  .clear{background:none;border:none;color:var(--muted);cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-decoration:underline;padding:4px}
+  .clear:hover{color:var(--spritz)}
+
+  /* riepilogo serata */
+  .tally{display:flex;flex-direction:column;gap:8px}
+  .trow{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:11px 14px}
+  .trow .tn{font-weight:700}
+  .tnum{font-family:var(--mono);font-weight:700;font-size:20px;text-align:right}
+  .tnum small{display:block;font-family:var(--body);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:400}
+  .tnum.beer{color:var(--amber)} .tnum.pen{color:var(--spritz)}
+
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="kicker">Sorsometro · scorecard</p>
+    <h1>Pub <span>Golf</span></h1>
+    <p class="edition">1° Torneo — Luglio 2026</p>
+    <p class="sub">Ogni locale è una buca. Segna in quanti <b>sorsi</b> chiudi il drink del gioco: meno sorsi, più in alto. I <b>drink extra</b> abbattono il punteggio — ma solo se li bevi svelto quanto il drink del gioco.</p>
+  </header>
+
+  <div class="venues" id="venues" role="tablist" aria-label="Locali"></div>
+
+  <div class="grid">
+    <!-- LOG -->
+    <section class="panel">
+      <h2>Segna una buca</h2>
+      <p class="h2sub" id="venueTag">—</p>
+
+      <div class="field">
+        <label for="name">Chi sei?</label>
+        <input type="text" id="name" placeholder="Il tuo nome" maxlength="24" autocomplete="off">
+      </div>
+
+      <div class="field" id="drinkField">
+        <label for="drink">Drink del gioco</label>
+        <select id="drink"></select>
+        <input type="text" id="drinkFree" placeholder="Che drink?" maxlength="30" autocomplete="off" style="display:none;margin-top:9px">
+      </div>
+
+      <div class="field">
+        <label for="sips">Sorsi per finirlo</label>
+        <div class="stepper">
+          <button type="button" data-step="gameSips" data-d="-1" data-min="1" aria-label="Meno sorsi">−</button>
+          <input type="text" inputmode="numeric" id="sips" value="3" aria-label="Sorsi del drink del gioco">
+          <button type="button" data-step="gameSips" data-d="1" data-min="1" aria-label="Più sorsi">+</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="lbl-row">
+          <label style="margin:0">Drink extra</label>
+          <button type="button" class="addx" id="addx">+ aggiungi extra</button>
+        </div>
+        <p class="hint">Un extra conta solo se bevuto in <b class="ref">≤ <span id="ref">3</span> sorsi</b> (come il drink del gioco). Il 1° valido <b>dimezza</b> il punteggio, il 2° gli toglie <b>¼</b>, il 3° <b>⅛</b>… Bevuto in più sorsi, non toglie niente.</p>
+        <div id="extras"></div>
+        <p class="noextra" id="noextra">Nessun extra: vale il punteggio pieno.</p>
+      </div>
+
+      <div class="field">
+        <div class="two">
+          <div>
+            <label for="total">Bevute totali stasera</label>
+            <div class="stepper">
+              <button type="button" data-step="total" data-d="-1" data-min="0" aria-label="Meno bevute">−</button>
+              <input type="text" inputmode="numeric" id="total" value="0" aria-label="Bevute totali stasera">
+              <button type="button" data-step="total" data-d="1" data-min="0" aria-label="Più bevute">+</button>
+            </div>
+          </div>
+          <div>
+            <label for="penalty">Drink di penitenza</label>
+            <div class="stepper">
+              <button type="button" data-step="penalty" data-d="-1" data-min="0" aria-label="Meno penitenze">−</button>
+              <input type="text" inputmode="numeric" id="penalty" value="0" aria-label="Drink di penitenza">
+              <button type="button" data-step="penalty" data-d="1" data-min="0" aria-label="Più penitenze">+</button>
+            </div>
+          </div>
+        </div>
+        <p class="hint">Conteggi della serata, fuori dal punteggio golf.</p>
+      </div>
+
+      <div class="score">
+        <div class="math" id="math">—</div>
+        <div class="big"><span id="bigScore">3</span><small>sorsi finali</small></div>
+      </div>
+
+      <button class="go" id="go">Segna la buca</button>
+    </section>
+
+    <!-- LEADERBOARD -->
+    <section class="panel">
+      <h2>Classifica</h2>
+      <p class="h2sub">meno sorsi = leggenda</p>
+      <div class="filters" id="filters"></div>
+      <div class="rows" id="rows"></div>
+      <div class="lbfoot">
+        <span class="note">Classifica condivisa: la vede chi apre questa pagina.</span>
+        <button class="clear" id="clear">azzera torneo</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- RIEPILOGO SERATA -->
+  <section class="panel full">
+    <h2>Bevute della serata</h2>
+    <p class="h2sub">chi ha bevuto di più (fuori dal gioco) e chi ha collezionato penitenze</p>
+    <div class="tally" id="tally"></div>
+  </section>
+</div>
+
+<script>
+const VENUES = [
+  { id:'daken',     name:'Da Ken',        tag:'Come si vuole — bevi quello che ti pare', acc:'var(--amber)',  free:true, ph:'Come si vuole' },
+  { id:'salome',    name:'Salomé Salomé', tag:'Aperol Spritz / Campari o Gin Tonic / Lemon', acc:'var(--spritz)', drinks:['Aperol Spritz','Campari','Gin Tonic','Lemon'] },
+  { id:'freud',     name:'Freud',         tag:'Drink a piacere', acc:'var(--amber)', free:true, ph:'Drink a piacere' },
+  { id:'moulin',    name:'Le Moulin',     tag:'Baby Guinness o altri shot', acc:'var(--shot)', drinks:['Baby Guinness','Altro shot…'], other:'Altro shot…' },
+  { id:'piratello', name:'Piratello',     tag:'Birra fredda del porcodio', acc:'var(--amber)', drinks:['Birra fredda'] },
+];
+
+const API = '/api/entries';         // stesso server che serve la pagina
+let lastSnapshot = '';               // per aggiornare solo se cambia
+let state = { venue: VENUES[0], gameSips:3, extras:[], total:0, penalty:0, filter:'all', entries:[] };
+
+/* storage: API del server condiviso */
+async function apiGet(){
+  const r = await fetch(API, {cache:'no-store'});
+  if(!r.ok) throw new Error('GET '+r.status);
+  return await r.json();
+}
+async function apiPost(entry){
+  const r = await fetch(API, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(entry)});
+  if(!r.ok) throw new Error('POST '+r.status);
+  return await r.json();
+}
+async function apiDel(id){
+  const r = await fetch(API+'/'+encodeURIComponent(id), {method:'DELETE'});
+  if(!r.ok) throw new Error('DELETE '+r.status);
+  return await r.json();
+}
+async function apiClear(){
+  const r = await fetch(API, {method:'DELETE'});
+  if(!r.ok) throw new Error('CLEAR '+r.status);
+  return await r.json();
+}
+function setEntries(list){
+  state.entries = Array.isArray(list) ? list : [];
+  lastSnapshot = JSON.stringify(state.entries);
+}
+function setOffline(off){
+  const n = document.querySelector('.lbfoot .note');
+  if(n) n.textContent = off ? '⚠︎ server non raggiungibile — riprovo…'
+                            : 'Classifica condivisa in tempo reale con chi apre il link.';
+}
+
+/* scoring: soglia = sorsi del drink del gioco; ogni extra <= soglia dimezza (÷2 cumulativo) */
+function qualifying(){ return state.extras.filter(x=>x.sips<=state.gameSips).length; }
+function effectiveOf(gameSips, extras){
+  const q = extras.filter(x=>x.sips<=gameSips).length;
+  return gameSips / Math.pow(2, q);
+}
+function fmt(n){ const r=Math.round(n*100)/100; return (r%1===0?String(r):String(r).replace('.',',')); }
+
+/* venue tabs */
+const venuesEl = document.getElementById('venues');
+VENUES.forEach((v,i)=>{
+  const b=document.createElement('button');
+  b.className='venue'+(i===0?' active':''); b.setAttribute('role','tab'); b.style.setProperty('--acc',v.acc);
+  b.innerHTML=`<span class="hole">buca ${i+1}</span><div class="vn">${v.name}</div><div class="vt">${v.tag}</div>`;
+  b.onclick=()=>selectVenue(v,b);
+  venuesEl.appendChild(b);
+});
+function selectVenue(v,btn){
+  state.venue=v;
+  document.querySelectorAll('.venue').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+  document.documentElement.style.setProperty('--accent',v.acc);
+  document.getElementById('venueTag').textContent=v.tag;
+  buildDrinkField(); liveScore();
+}
+function buildDrinkField(){
+  const sel=document.getElementById('drink'), free=document.getElementById('drinkFree'), v=state.venue;
+  if(v.free){ sel.style.display='none'; free.style.display='block'; free.placeholder=v.ph||'Che drink?'; free.value=''; }
+  else{
+    sel.style.display='block';
+    sel.innerHTML=v.drinks.map(d=>`<option>${d}</option>`).join('');
+    sel.onchange=()=>{ if(v.other&&sel.value===v.other){free.style.display='block';free.placeholder='Che shot?';free.value='';free.focus();} else free.style.display='none'; };
+    free.style.display='none';
+  }
+}
+function currentDrink(){
+  const v=state.venue, sel=document.getElementById('drink'), free=document.getElementById('drinkFree');
+  if(v.free) return free.value.trim()||v.ph||'Drink';
+  if(v.other&&sel.value===v.other) return free.value.trim()||'Shot';
+  return sel.value;
+}
+
+/* steppers (main) */
+document.querySelectorAll('[data-step]').forEach(btn=>{
+  btn.onclick=()=>{ const k=btn.dataset.step,d=+btn.dataset.d,min=+(btn.dataset.min||0);
+    state[k]=Math.max(min,state[k]+d); document.getElementById(inputIdFor(k)).value=state[k]; liveScore(); };
+});
+function inputIdFor(k){ return k==='gameSips'?'sips':k; }
+['sips','total','penalty'].forEach(id=>{
+  const inp=document.getElementById(id), key=(id==='sips'?'gameSips':id), min=(id==='sips'?1:0);
+  inp.oninput=()=>{ let n=parseInt(inp.value.replace(/\D/g,''),10); if(isNaN(n)||n<min)n=min; state[key]=n; inp.value=n; liveScore(); };
+});
+
+/* extra drinks */
+const extrasEl=document.getElementById('extras');
+document.getElementById('addx').onclick=()=>{ state.extras.push({sips:state.gameSips}); renderExtras(); liveScore(); };
+function renderExtras(){
+  document.getElementById('ref').textContent=state.gameSips;
+  document.getElementById('noextra').style.display=state.extras.length?'none':'block';
+  extrasEl.innerHTML=state.extras.map((x,i)=>{
+    const ok=x.sips<=state.gameSips;
+    return `<div class="xrow" data-i="${i}">
+      <span class="xlbl">Extra ${i+1}</span>
+      <div class="stepper mini">
+        <button type="button" data-xd="-1" aria-label="Meno sorsi">−</button>
+        <input type="text" inputmode="numeric" value="${x.sips}" data-xin aria-label="Sorsi extra ${i+1}">
+        <button type="button" data-xd="1" aria-label="Più sorsi">+</button>
+      </div>
+      <span class="badge ${ok?'ok':'no'}">${ok?'✓ dimezza':'✗ troppi sorsi'}</span>
+      <button type="button" class="xdel" aria-label="Togli extra ${i+1}">✕</button>
+    </div>`;
+  }).join('');
+  extrasEl.querySelectorAll('.xrow').forEach(row=>{
+    const i=+row.dataset.i;
+    row.querySelectorAll('[data-xd]').forEach(b=>b.onclick=()=>{ state.extras[i].sips=Math.max(1,state.extras[i].sips+(+b.dataset.xd)); renderExtras(); liveScore(); });
+    const inp=row.querySelector('[data-xin]');
+    inp.oninput=()=>{ let n=parseInt(inp.value.replace(/\D/g,''),10); if(isNaN(n)||n<1)n=1; state.extras[i].sips=n; inp.value=n; liveScore(); refreshBadges(); };
+    row.querySelector('.xdel').onclick=()=>{ state.extras.splice(i,1); renderExtras(); liveScore(); };
+  });
+}
+function refreshBadges(){
+  extrasEl.querySelectorAll('.xrow').forEach(row=>{
+    const i=+row.dataset.i, ok=state.extras[i].sips<=state.gameSips, b=row.querySelector('.badge');
+    b.className='badge '+(ok?'ok':'no'); b.textContent=ok?'✓ dimezza':'✗ troppi sorsi';
+  });
+}
+
+/* live score */
+function liveScore(){
+  document.getElementById('ref').textContent=state.gameSips;
+  refreshBadges();
+  const q=qualifying(), eff=effectiveOf(state.gameSips,state.extras);
+  document.getElementById('bigScore').textContent=fmt(eff);
+  const m=document.getElementById('math');
+  if(q===0){
+    const ignored=state.extras.length;
+    m.innerHTML=`${state.gameSips} sorsi<br><span style="color:var(--muted)">${ignored?ignored+' extra troppo lenti → ignorati':'nessun extra valido'}</span>`;
+  }else{
+    const chain=' <span class="op">÷2</span>'.repeat(q);
+    m.innerHTML=`${state.gameSips}${chain} <span class="op">=</span> ${fmt(eff)}<br><span style="color:var(--muted)">${q} extra valid${q===1?'o':'i'} → 1° metà, poi ¼, ⅛…</span>`;
+  }
+}
+
+/* add entry */
+document.getElementById('go').onclick=async()=>{
+  const name=document.getElementById('name').value.trim();
+  if(!name){ const el=document.getElementById('name'); el.focus(); el.style.outline='2px solid var(--spritz)'; setTimeout(()=>el.style.outline='',600); return; }
+  const go=document.getElementById('go'); go.disabled=true; const label=go.textContent; go.textContent='Salvo…';
+  const entry={
+    name, venue:state.venue.id, venueName:state.venue.name,
+    drink:currentDrink(), gameSips:state.gameSips,
+    extras:state.extras.map(x=>x.sips),
+    total:state.total, penalty:state.penalty
+    // qualifying / eff / id / ts: li calcola e assegna il server
+  };
+  try{
+    const list=await apiPost(entry);   // il server risponde con la lista aggiornata
+    setEntries(list); setOffline(false); render();
+    // reset buca ma tieni i totali serata
+    document.getElementById('name').value='';
+    state.gameSips=3; state.extras=[];
+    document.getElementById('sips').value=3;
+    renderExtras(); liveScore();
+  }catch(e){ setOffline(true); alert('Non sono riuscito a salvare: server non raggiungibile.'); }
+  finally{ go.disabled=false; go.textContent=label; }
+};
+
+/* delete / clear */
+async function del(id){
+  try{ const list=await apiDel(id); setEntries(list); setOffline(false); render(); }
+  catch(e){ setOffline(true); }
+}
+document.getElementById('clear').onclick=async()=>{
+  if(!state.entries.length) return;
+  if(confirm('Azzerare tutto il torneo? Non si torna indietro.')){
+    try{ const list=await apiClear(); setEntries(list); setOffline(false); render(); }
+    catch(e){ setOffline(true); }
+  }
+};
+
+/* filters + render */
+function buildFilters(){
+  const f=document.getElementById('filters'); const opts=[{id:'all',name:'Tutte le buche'},...VENUES]; f.innerHTML='';
+  opts.forEach(o=>{ const c=document.createElement('button'); c.className='chip'+(state.filter===o.id?' active':''); c.textContent=o.name; c.onclick=()=>{state.filter=o.id;render();}; f.appendChild(c); });
+}
+function render(){
+  buildFilters();
+  const rows=document.getElementById('rows');
+  let list=state.entries.slice();
+  if(state.filter!=='all') list=list.filter(e=>e.venue===state.filter);
+  list.sort((a,b)=> a.eff-b.eff || b.qualifying-a.qualifying || a.gameSips-b.gameSips || a.ts-b.ts);
+  if(!list.length){ rows.innerHTML=`<div class="empty">Ancora nessuna buca segnata.<br>Comincia tu, coraggio.</div>`; }
+  else{
+    rows.innerHTML=list.map((e,i)=>`
+      <div class="row${i===0?' top':''}">
+        ${i===0?'<span class="crown">🏆</span>':''}
+        <div class="rank">${i+1}</div>
+        <div class="who">
+          <div class="nm">${esc(e.name)}</div>
+          <div class="meta">
+            <span class="vchip">${esc(e.venueName)}</span>
+            <span>${esc(e.drink)}</span>
+            <span class="stat">${e.gameSips} sorsi · ${e.qualifying} extra</span>
+            ${e.penalty?`<span class="stat pen">⚠︎ ${e.penalty} penitenz${e.penalty===1?'a':'e'}</span>`:''}
+          </div>
+        </div>
+        <div class="eff">${fmt(e.eff)}<small>sorsi</small></div>
+        <button class="del" data-id="${e.id}" aria-label="Cancella buca di ${esc(e.name)}">✕</button>
+      </div>`).join('');
+    rows.querySelectorAll('.del').forEach(b=>b.onclick=()=>del(b.dataset.id));
+  }
+  renderTally();
+}
+function renderTally(){
+  const t=document.getElementById('tally');
+  const byName={};
+  state.entries.forEach(e=>{
+    const k=e.name.toLowerCase();
+    if(!byName[k]) byName[k]={name:e.name,total:0,penalty:0};
+    byName[k].total=Math.max(byName[k].total,e.total||0);
+    byName[k].penalty=Math.max(byName[k].penalty,e.penalty||0);
+  });
+  const arr=Object.values(byName).sort((a,b)=> b.total-a.total || b.penalty-a.penalty);
+  if(!arr.length){ t.innerHTML=`<div class="empty">Qui appariranno le bevute totali di ognuno.</div>`; return; }
+  t.innerHTML=arr.map(p=>`
+    <div class="trow">
+      <span class="tn">${esc(p.name)}</span>
+      <span class="tnum beer">${p.total}<small>bevute</small></span>
+      <span class="tnum pen">${p.penalty}<small>penitenze</small></span>
+    </div>`).join('');
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* live sync: aggiorna la classifica ogni pochi secondi senza toccare il form */
+async function sync(){
+  try{
+    const list=await apiGet();
+    const snap=JSON.stringify(list);
+    if(snap!==lastSnapshot){ setEntries(list); render(); }
+    setOffline(false);
+  }catch(e){ setOffline(true); }
+}
+
+/* init */
+(async()=>{
+  buildDrinkField();
+  document.getElementById('venueTag').textContent=state.venue.tag;
+  document.documentElement.style.setProperty('--accent',state.venue.acc);
+  renderExtras(); liveScore();
+  try{ setEntries(await apiGet()); setOffline(false); }catch(e){ setOffline(true); }
+  render();
+  setInterval(sync, 4000);
+})();
+</script>
+</body>
+</html>
