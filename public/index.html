@@ -137,6 +137,10 @@
 
   h1 span,.score .big,.go,.eff,.vchip,.dk,.row.top,.seg button{transition:color .4s ease,background-color .4s ease,border-color .4s ease,box-shadow .4s ease}
   @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  .filters{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 16px}
+  .chip{font-size:12px;font-family:var(--mono);color:var(--muted);cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 11px;transition:color .15s,background .15s,border-color .15s}
+  .chip:hover{color:var(--ink)}
+  .chip.active{color:#12140d;font-weight:700}
 </style>
 </head>
 <body>
@@ -195,7 +199,7 @@
 
       <div class="score">
         <div class="math" id="hint">—</div>
-        <div class="big"><span id="bigScore">—</span><small>il tuo punteggio</small></div>
+        <div class="big"><span id="bigScore">—</span><small>punteggio a questa buca</small></div>
       </div>
 
       <button class="go" id="go">Segna la bevuta</button>
@@ -205,6 +209,7 @@
     <section class="panel">
       <h2>Classifica</h2>
       <p class="h2sub">ricordatevi di bere responsabilmente</p>
+      <div class="filters" id="filters"></div>
       <div class="rows" id="rows"></div>
       <div class="lbfoot" id="lbfoot"></div>
     </section>
@@ -259,7 +264,7 @@ const ACC={}; VENUES.forEach(v=>ACC[v.id]=(THEMES[v.id]||THEMES.daken).a);
 const API='/api/entries';
 let lastSnapshot='';
 let currentUser='', isAdmin=false, gmPin='', adminNames=['larry'];
-let state={ venue:VENUES[0], type:'gioco', sips:3, entries:[] };
+let state={ venue:VENUES[0], type:'gioco', sips:3, filter:'all', entries:[] };
 
 const LS={ get(k){try{return localStorage.getItem(k)}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}}, del(k){try{localStorage.removeItem(k)}catch(e){}} };
 
@@ -278,16 +283,28 @@ function applyTheme(id){ const t=THEMES[id]||THEMES.daken, r=document.documentEl
   r.setProperty('--bg',t.bg); r.setProperty('--bg2',t.bg2); r.setProperty('--card',t.card); r.setProperty('--card2',t.card2); r.setProperty('--line',t.line); }
 
 /* punteggio per persona (nuova regola) */
-function personStats(name){
-  const mine=state.entries.filter(e=>e.name.toLowerCase()===name.toLowerCase());
+// soglia calante: ogni extra <= punteggio attuale toglie 1, minimo 1
+function scoreFrom(bestSips, extraSips){ let s=bestSips; extraSips.slice().sort((a,b)=>b-a).forEach(e=>{ if(s>1 && e<=s) s-=1; }); return s; }
+function entriesOf(name){ return state.entries.filter(e=>e.name.toLowerCase()===name.toLowerCase()); }
+function venueStats(name,venueId){
+  const mine=entriesOf(name).filter(e=>e.venue===venueId);
   const gioco=mine.filter(e=>e.type==='gioco');
-  const extras=mine.filter(e=>e.type==='extra');
-  const pen=mine.filter(e=>e.type==='penitenza');
-  let best=null; gioco.forEach(e=>{ if(!best||e.sips<best.sips) best=e; });
-  const qualifying= best? extras.filter(e=>e.sips<=best.sips).length : 0;
-  const score= best? Math.max(1, best.sips-qualifying) : null;
-  return {mine,gioco,extras,pen,best,qualifying,score,total:mine.length,penCount:pen.length};
+  const extras=mine.filter(e=>e.type==='extra').map(e=>e.sips);
+  const pen=mine.filter(e=>e.type==='penitenza').length;
+  if(!gioco.length) return {has:false,extras,pen,best:null,score:null};
+  let best=gioco[0]; gioco.forEach(e=>{ if(e.sips<best.sips) best=e; });
+  return {has:true,extras,pen,best,score:scoreFrom(best.sips,extras)};
 }
+function personTotal(name){
+  let total=0,holes=0,penCount=0; const bars=[];
+  VENUES.forEach(v=>{ const s=venueStats(name,v.id); penCount+=s.pen; if(s.has){ bars.push({venue:v.id,venueName:v.name,best:s.best,score:s.score}); total+=s.score; holes++; } });
+  return {total,holes,penCount,bars,totalDrinks:entriesOf(name).length};
+}
+function allNames(){ const m={}; state.entries.forEach(e=>{ m[e.name.toLowerCase()]=e.name; }); return Object.values(m); }
+function totalBoard(){ return allNames().map(n=>Object.assign({name:n},personTotal(n))).filter(p=>p.holes>0)
+  .sort((a,b)=> a.total-b.total || b.holes-a.holes || a.name.localeCompare(b.name)); }
+function barBoard(venueId){ return allNames().map(n=>{ const s=venueStats(n,venueId); return s.has?{name:n,best:s.best,score:s.score,pen:s.pen}:null; })
+  .filter(Boolean).sort((a,b)=> a.score-b.score || a.best.sips-b.best.sips || a.name.localeCompare(b.name)); }
 
 /* venue tabs */
 const venuesEl=document.getElementById('venues');
@@ -338,17 +355,18 @@ document.getElementById('sips').oninput=e=>{ let n=parseInt(e.target.value.repla
 
 /* anteprima effetto */
 function computeHint(){
-  const st=currentUser?personStats(currentUser):{best:null,score:null,qualifying:0};
-  document.getElementById('bigScore').textContent = st.score==null?'—':st.score;
+  const bar=currentUser?venueStats(currentUser,state.venue.id):{has:false,best:null,score:null,extras:[]};
+  document.getElementById('bigScore').textContent = bar.score==null?'—':bar.score;
   const h=document.getElementById('hint');
   if(state.type==='gioco'){
-    h.innerHTML = st.best
-      ? `Se lo bevi in <b style="color:var(--accent)">meno di ${st.best.sips}</b> sorsi diventa il tuo punteggio.<br><span style="color:var(--muted)">ora sei a ${st.score}</span>`
-      : `Sarà la tua prima bevuta di gioco e il tuo punteggio di partenza.`;
+    h.innerHTML = bar.has
+      ? `A ${esc(state.venue.name)} il tuo miglior drink è <b style="color:var(--accent)">${bar.best.sips} sorsi</b> (punteggio ${bar.score}).<br><span style="color:var(--muted)">bevilo in meno sorsi per migliorare questa buca</span>`
+      : `Sarà il tuo punteggio di partenza a <b style="color:var(--accent)">${esc(state.venue.name)}</b>.`;
   } else if(state.type==='extra'){
-    if(!st.best) h.innerHTML=`Prima segna un <b>drink del gioco</b>: l'extra sconta quello.`;
-    else if(state.sips<=st.best.sips){ const ns=Math.max(1,st.best.sips-(st.qualifying+1)); h.innerHTML=`<b style="color:var(--accent)">−1 punto</b>: passeresti da ${st.score} a ${ns}.<br><span style="color:var(--muted)">valido perché ≤ ${st.best.sips} sorsi (la tua bevuta migliore)</span>`; }
-    else h.innerHTML=`Troppi sorsi: <b style="color:var(--spritz)">più di ${st.best.sips}</b> non sconta niente.`;
+    if(!bar.has) h.innerHTML=`Prima segna un <b>drink del gioco</b> a questa buca: l'extra sconta quello.`;
+    else { const ns=scoreFrom(bar.best.sips, bar.extras.concat([state.sips]));
+      if(ns<bar.score) h.innerHTML=`<b style="color:var(--accent)">−1 punto</b> a ${esc(state.venue.name)}: da ${bar.score} a ${ns}.<br><span style="color:var(--muted)">valido perché ≤ ${bar.score} sorsi (il tuo punteggio qui ora)</span>`;
+      else h.innerHTML=`Non sconta: servono <b style="color:var(--spritz)">≤ ${bar.score} sorsi</b> (il tuo punteggio qui ora).`; }
   } else {
     h.innerHTML=`La penitenza <b>non cambia</b> il punteggio, ma conta nel totale bevute.`;
   }
@@ -382,40 +400,53 @@ function renderUserbar(){ const el=document.getElementById('userbar');
   el.querySelector('#ub-logout').onclick=logout; }
 
 /* render */
-function leaderboard(){
-  const names={}; state.entries.forEach(e=>{ names[e.name.toLowerCase()]=e.name; });
-  const arr=Object.values(names).map(n=>Object.assign({name:n},personStats(n))).filter(p=>p.best);
-  arr.sort((a,b)=> a.score-b.score || b.total-a.total || a.name.localeCompare(b.name));
-  return arr;
+function buildFilters(){
+  const f=document.getElementById('filters');
+  const opts=[{id:'all',name:'Tutte le buche',c:'#ffffff'},...VENUES.map(v=>({id:v.id,name:v.name,c:ACC[v.id]}))];
+  f.innerHTML='';
+  opts.forEach(o=>{ const c=document.createElement('button'); c.className='chip'+(state.filter===o.id?' active':'');
+    if(state.filter===o.id){ c.style.background=o.c; c.style.borderColor=o.c; }
+    c.textContent=o.name; c.onclick=()=>{ state.filter=o.id; render(); }; f.appendChild(c); });
 }
 function render(){
-  // classifica
-  const rows=document.getElementById('rows'), lb=leaderboard();
-  if(!lb.length){ rows.innerHTML=`<div class="empty">Ancora nessun punteggio.<br>Segna il tuo primo drink del gioco.</div>`; }
-  else{
-    rows.innerHTML=lb.map((p,i)=>{
-      const c=ACC[p.best.venue]||'var(--accent)', g=(THEMES[p.best.venue]||THEMES.daken).g;
-      const disc=p.best.sips-p.score;
-      return `<div class="row${i===0?' top':''}" style="--accent:${c};--glow:${g}">
+  buildFilters();
+  const rows=document.getElementById('rows');
+  if(state.filter==='all'){
+    const lb=totalBoard();
+    if(!lb.length){ rows.innerHTML=`<div class="empty">Ancora nessun punteggio.<br>Segna il tuo primo drink del gioco.</div>`; }
+    else rows.innerHTML=lb.map((p,i)=>{
+      const breakdown=p.bars.map(b=>`<span class="vchip" style="color:${ACC[b.venue]}">${esc(b.venueName)} ${b.score}</span>`).join(' ');
+      return `<div class="row${i===0?' top':''}" style="--accent:#ffffff;--glow:rgba(255,255,255,.16)">
         ${i===0?'<span class="crown">🏆</span>':''}
         <div class="rank">${i+1}</div>
-        <div class="who">
-          <div class="nm">${esc(p.name)}</div>
-          <div class="meta">
-            <span class="vchip">${esc(p.best.venueName)}</span>
-            <span class="dk">${esc(p.best.drink)}</span>
-            <span class="stat">${p.best.sips} sorsi${disc>0?` − ${disc} extra`:''}${p.penCount?` · `:''}</span>
-            ${p.penCount?`<span class="stat pen">⚠︎ ${p.penCount} penitenz${p.penCount===1?'a':'e'}</span>`:''}
-          </div>
+        <div class="who"><div class="nm">${esc(p.name)}</div>
+          <div class="meta"><span class="stat">${p.holes} buc${p.holes===1?'a':'he'}</span> ${breakdown}${p.penCount?` <span class="stat pen">⚠︎ ${p.penCount}</span>`:''}</div>
+        </div>
+        <div class="eff">${p.total}<small>sorsi tot</small></div>
+      </div>`;
+    }).join('');
+  } else {
+    const v=VENUES.find(x=>x.id===state.filter), lb=barBoard(state.filter);
+    if(!lb.length){ rows.innerHTML=`<div class="empty">Nessun punteggio a ${esc(v.name)} per ora.</div>`; }
+    else{ const c=ACC[state.filter], g=(THEMES[state.filter]||THEMES.daken).g;
+      rows.innerHTML=lb.map((p,i)=>{ const disc=p.best.sips-p.score;
+        return `<div class="row${i===0?' top':''}" style="--accent:${c};--glow:${g}">
+        ${i===0?'<span class="crown">🏆</span>':''}
+        <div class="rank">${i+1}</div>
+        <div class="who"><div class="nm">${esc(p.name)}</div>
+          <div class="meta"><span class="dk">${esc(p.best.drink)}</span>
+            <span class="stat">${p.best.sips} sorsi${disc>0?` − ${disc} extra`:''}</span>
+            ${p.pen?` <span class="stat pen">⚠︎ ${p.pen}</span>`:''}</div>
         </div>
         <div class="eff">${p.score}<small>sorsi</small></div>
       </div>`;
-    }).join('');
+      }).join('');
+    }
   }
   const foot=document.getElementById('lbfoot');
   foot.innerHTML=isAdmin
     ? `<span class="note">Sei il game master: cancella dalle "Gestione bevute" qui sotto.</span><span><button class="clear" id="f-clear">azzera torneo</button> · <button class="gmlink" id="f-lock">esci da game master</button></span>`
-    : `<span class="note">Classifica condivisa in tempo reale. Un punteggio per persona.</span><button class="gmlink" id="f-unlock">sei il game master?</button>`;
+    : `<span class="note">"Tutte le buche" = somma dei punteggi di ogni bar. Tocca un bar per la sua classifica.</span><button class="gmlink" id="f-unlock">sei il game master?</button>`;
   if(isAdmin){ foot.querySelector('#f-clear').onclick=clearAll; foot.querySelector('#f-lock').onclick=lockGM; }
   else foot.querySelector('#f-unlock').onclick=unlockGM;
 
@@ -423,13 +454,13 @@ function render(){
 }
 function typeTag(t){ return t==='extra'?'<span class="tt extra">extra</span>':t==='penitenza'?'<span class="tt pen">penitenza</span>':'<span class="tt">gioco</span>'; }
 function renderHistory(){
-  const st=personStats(currentUser);
+  const t=personTotal(currentUser);
   document.getElementById('histWho').textContent=`storico di ${currentUser}`;
   document.getElementById('histsum').innerHTML=
-    `<span class="hn g">${st.score==null?'—':st.score}<small>punteggio</small></span>
-     <span class="hn b">${st.total}<small>bevute totali</small></span>
-     <span class="hn">${st.penCount}<small>penitenze</small></span>`;
-  const h=document.getElementById('history'), mine=st.mine.slice().sort((a,b)=>b.ts-a.ts);
+    `<span class="hn g">${t.holes?t.total:'—'}<small>punteggio totale</small></span>
+     <span class="hn b">${t.totalDrinks}<small>bevute totali</small></span>
+     <span class="hn">${t.penCount}<small>penitenze</small></span>`;
+  const h=document.getElementById('history'), mine=entriesOf(currentUser).slice().sort((a,b)=>b.ts-a.ts);
   if(!mine.length){ h.innerHTML=`<div class="empty">Qui appaiono le bevute che segni tu (${esc(currentUser)}).</div>`; return; }
   h.innerHTML=mine.map(e=>{
     const c=ACC[e.venue]||'var(--accent)';
